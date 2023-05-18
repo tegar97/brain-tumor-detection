@@ -1,5 +1,7 @@
 import math
 import sys
+from datetime import datetime
+
 import cv2
 from PyQt5.QtWidgets import QMainWindow, QApplication, QLabel, QRadioButton, QPushButton, QFileDialog
 from PyQt5.QtGui import QPixmap, QImage
@@ -9,6 +11,7 @@ from keras.models import load_model
 import cv2 as cv
 import imutils
 import numpy as np
+import os
 
 from display_region_tumor import DisplayTumor
 from predict import TumorDetector
@@ -21,6 +24,7 @@ class Gui(QMainWindow):
         super(Gui, self).__init__()
         loadUi('gui.ui', self)
         self.Image = None
+        self.ImageResult = None
         self.pushButton.clicked.connect(self.browseWindow)
         self.predict_button.clicked.connect(self.check)
         self.listOfWinFrame = []
@@ -35,13 +39,10 @@ class Gui(QMainWindow):
         bytes_per_line = 3 * width
         q_image = QImage(self.Image.data, width, height, bytes_per_line, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(q_image)
+        self.image_original.setPixmap(pixmap)
+        self.label.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        self.label.setScaledContents(True)
 
-        if(index == 0):
-            self.label_2.setPixmap(pixmap)
-            self.label.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-            self.label.setScaledContents(True)
-        else:
-            self.predict_image.setPixmap(pixmap)
 
 
     def readImage(self):
@@ -55,13 +56,25 @@ class Gui(QMainWindow):
         tumor_detector = TumorDetector(model_path)
         result = tumor_detector.predict_tumor(self.Image)
         if result > 0.5:
-            self.label_result.setText("Tumor Detected")
+            self.label_result.setText("Brain has Tumor, Tumor Detected!")
             self.label_result.setStyleSheet("color: red")
+            output_type = 'tumor'
         else:
-            self.label_result.setText("No Tumor")
+            self.label_result.setText("Brain is healthy, No Tumor Detected")
             self.label_result.setStyleSheet("color: green")
+            output_type = 'no_tumor'
 
+        self.exportImage(output_type)
         self.displayTumor()
+
+    def exportImage(self, output_type):
+        current_date = datetime.now().strftime('%Y%m%d')
+
+        filename = f'{output_type}_{current_date}.jpg'
+        output_path = os.path.join(os.getcwd(),output_type, filename)
+        cv2.imwrite(output_path, self.Image)
+
+        print(f"Image exported to: {current_date}")
 
     def removeNoise(self):
         self.listOfWinFrame[0].button_view.setEnabled(True)
@@ -88,6 +101,6 @@ class Gui(QMainWindow):
 
 app = QApplication([])
 window = Gui()
-window.setWindowTitle('Module A2')
+window.setWindowTitle('Tumor detector')
 window.show()
 app.exec_()

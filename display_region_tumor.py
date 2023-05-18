@@ -15,7 +15,6 @@ class DisplayTumor:
         opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, self.kernel, iterations=2)
         self.cur_img = opening
 
-        
 
     def display_tumor(self):
         if self.thresh is None:
