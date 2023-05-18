@@ -12,6 +12,7 @@ import cv2 as cv
 import imutils
 import numpy as np
 import os
+from ImagePreprocessor import ImagePreprocessor
 
 from display_region_tumor import DisplayTumor
 from predict import TumorDetector
@@ -22,11 +23,31 @@ model_path = 'best_model.h5'
 class Gui(QMainWindow):
     def __init__(self):
         super(Gui, self).__init__()
+        self.thresh = None
         loadUi('gui.ui', self)
         self.Image = None
         self.ImageResult = None
+        self.target_size = (224, 224)
         self.pushButton.clicked.connect(self.browseWindow)
         self.predict_button.clicked.connect(self.check)
+        self.actionTransform_to_grayscale.triggered.connect(self.stepGrayscale)
+        self.actionapply_gaussian.triggered.connect(self.stepGaussianBlur)
+        self.actionapply_thresholding.triggered.connect(self.stepThresholding)
+        self.actionapply_eroded.triggered.connect(self.stepErosion)
+        self.actionapply_dilated.triggered.connect(self.stepDilation)
+        self.actionfind_contours.triggered.connect(self.stepFindContours)
+        self.actionTransform_to_grayscale_2.triggered.connect(self.stepGrayscale)
+        self.actionApply_tresholding.triggered.connect(self.stepFindAreaTresholding)
+        self.actionApply_morphology.triggered.connect(self.stepFindAreaApplyMorhology)
+        self.actionApply_dilate.triggered.connect(self.stepFindAreanApplyDilate)
+        self.actiondinf_foreground_area.triggered.connect(self.stepFindForeGrondArea)
+        self.actionfind_uknown_region.triggered.connect(self.stepFindUnknowArea)
+        self.actionmark_the_region_of_unknown_with_zero.triggered.connect(self.stepFindMarkRegion)
+
+
+
+
+
         self.listOfWinFrame = []
 
     def browseWindow(self):
@@ -97,6 +118,172 @@ class Gui(QMainWindow):
 
     def check(self):
         self.readImage()
+
+    # separate step
+    def stepGrayscale(self):
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        cv2.imshow('gray', gray)
+        cv2.waitKey(0)
+        return gray
+
+    def stepGaussianBlur(self):
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        blurred = imagePreprocessor.applyGaussianBlur(gray)
+        #open in cv2
+        cv2.imshow('blurred', blurred)
+        cv2.waitKey(0)
+        return blurred
+
+    def stepThresholding(self):
+
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        blurred = imagePreprocessor.applyGaussianBlur(gray)
+        thresh = imagePreprocessor.applyThresholding(blurred , 45 , 255)
+        #open in cv2
+        cv2.imshow('thresh', thresh)
+        cv2.waitKey(0)
+        return thresh
+
+    def stepErosion(self):
+
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        blurred = imagePreprocessor.applyGaussianBlur(gray)
+        thresh = imagePreprocessor.applyThresholding(blurred , 45 , 255)
+        eroded = imagePreprocessor.applyErosian(thresh)
+        #open in cv2
+        cv2.imshow('eroded', eroded)
+        cv2.waitKey(0)
+        return eroded
+
+    def stepDilation(self):
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        blurred = imagePreprocessor.applyGaussianBlur(gray)
+        thresh = imagePreprocessor.applyThresholding(blurred , 45 , 255)
+        eroded = imagePreprocessor.applyErosian(thresh)
+        dilated = imagePreprocessor.applyDilation(eroded)
+        # open in cv2
+        cv2.imshow('dilated', dilated)
+        cv2.waitKey(0)
+        return dilated
+
+    def stepFindContours(self):
+
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        blurred = imagePreprocessor.applyGaussianBlur(gray)
+        thresh = imagePreprocessor.applyThresholding(blurred , 45 , 255)
+        eroded = imagePreprocessor.applyErosian(thresh)
+        dilated = imagePreprocessor.applyDilation(eroded)
+        contours = imagePreprocessor.findContours(dilated)
+        extLeft, extRight, extTop, extBot = imagePreprocessor.findExtremePoints(contours)
+        image = imagePreprocessor.cropAndResizeImage(gray, extLeft, extRight, extTop, extBot)
+
+
+        cv2.imshow('cropped', image)
+        cv2.waitKey(0)
+        return image
+
+    def stepFindAreaTresholding(self):
+
+        imagePreprocessor = ImagePreprocessor()
+        gray = imagePreprocessor.toGrayScale(self.Image)
+        tresh = imagePreprocessor.applyThresholding(gray , cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+
+
+        cv2.imshow('area', tresh)
+        cv2.waitKey(0)
+        return tresh
+
+    def stepFindAreaApplyMorhology(self):
+
+        imagePre = ImagePreprocessor()
+        gray = imagePre.toGrayScale(self.Image)
+        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+        opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=2)
+
+        # open in cv2
+        cv2.imshow('opening', opening)
+
+    def stepFindAreanApplyDilate(self):
+
+        imagePre = ImagePreprocessor()
+        gray = imagePre.toGrayScale(self.Image)
+        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+        opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=2)
+        sure_bg = cv.dilate(opening, np.ones((3, 3), np.uint8), iterations=3)
+
+        # open in cv2
+        cv2.imshow('sure_bg', sure_bg)
+
+    def stepFindForeGrondArea(self):
+
+        imagePre = ImagePreprocessor()
+        gray = imagePre.toGrayScale(self.Image)
+        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+        opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=2)
+        sure_bg = cv.dilate(opening, np.ones((3, 3), np.uint8), iterations=3)
+        dist_transform = cv.distanceTransform(opening, cv.DIST_L2, 5)
+        ret, sure_fg = cv.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
+
+        # open in cv2
+        cv2.imshow('dist_transform', sure_fg)
+
+    def stepFindUnknowArea(self):
+
+        imagePre = ImagePreprocessor()
+        gray = imagePre.toGrayScale(self.Image)
+        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+        opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=2)
+        sure_bg = cv.dilate(opening, np.ones((3, 3), np.uint8), iterations=3)
+        dist_transform = cv.distanceTransform(opening, cv.DIST_L2, 5)
+        ret, sure_fg = cv.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
+        sure_fg = np.uint8(sure_fg)
+        unknown = cv.subtract(sure_bg, sure_fg)
+
+        # open in cv2
+        cv2.imshow('unknown', unknown)
+
+    def stepFindMarkRegion(self):
+
+        imagePre = ImagePreprocessor()
+        gray = imagePre.toGrayScale(self.Image)
+        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+        opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=2)
+        sure_bg = cv.dilate(opening, np.ones((3, 3), np.uint8), iterations=3)
+        dist_transform = cv.distanceTransform(opening, cv.DIST_L2, 5)
+        ret, sure_fg = cv.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
+        sure_fg = np.uint8(sure_fg)
+        unknown = cv.subtract(sure_bg, sure_fg)
+        ret, markers = cv.connectedComponents(sure_fg)
+        markers = markers + 1
+
+        # Now mark the region of unknown with zero
+        markers[unknown == 255] = 0
+        markers = cv.watershed(self.Image, markers)
+        self.Image[markers == -1] = [255, 0, 0]
+
+        image = cv.cvtColor(self.Image, cv.COLOR_HSV2BGR)
+
+
+
+
+        # open in cv2
+        cv2.imshow('image', image)
+
+
+
+
+
+
+
+
+
+
 
 
 app = QApplication([])

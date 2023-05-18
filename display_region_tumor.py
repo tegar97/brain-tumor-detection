@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 
+from ImagePreprocessor import ImagePreprocessor
 
 class DisplayTumor:
     def __init__(self, img):
@@ -10,8 +11,9 @@ class DisplayTumor:
         self.thresh = None
 
     def remove_noise(self):
-        gray = cv.cvtColor(self.orig_img, cv.COLOR_BGR2GRAY)
-        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
+        imagePre = ImagePreprocessor()
+        gray =  imagePre.toGrayScale(self.orig_img)
+        ret, self.thresh = cv.threshold(gray, 0, 255, cv.THRESH_OTSU)
         opening = cv.morphologyEx(self.thresh, cv.MORPH_OPEN, self.kernel, iterations=2)
         self.cur_img = opening
 
