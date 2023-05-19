@@ -24,8 +24,6 @@ class TumorDetector:
         extLeft, extRight, extTop, extBot = imagePreprocessor.findExtremePoints(cnts)
         image = imagePreprocessor.cropAndResizeImage(image, extLeft, extRight, extTop, extBot)
 
-
-
         return image
 
     def predict_tumor(self, image):

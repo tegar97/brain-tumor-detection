@@ -19,6 +19,7 @@ from predict import TumorDetector
 from PyQt5 import QtCore, QtWidgets
 model_path = 'best_model.h5'
 
+from PIL import Image
 
 class Gui(QMainWindow):
     def __init__(self):
@@ -181,11 +182,25 @@ class Gui(QMainWindow):
         dilated = imagePreprocessor.applyDilation(eroded)
         contours = imagePreprocessor.findContours(dilated)
         extLeft, extRight, extTop, extBot = imagePreprocessor.findExtremePoints(contours)
-        image = imagePreprocessor.cropAndResizeImage(gray, extLeft, extRight, extTop, extBot)
+        image = imagePreprocessor.cropAndResizeImage(self.Image, extLeft, extRight, extTop, extBot)
+        # Reverse the reshape operation.
+        image = image.reshape(image.shape[1], image.shape[2], image.shape[3])
+
+        # Multiply the image by 255.
+        image = image * 255
+
+        # Convert the image to a NumPy array.
+        image_array = np.array(image)
+
+        # Convert the NumPy array to a PIL image.
+        image = Image.fromarray(image_array.astype('uint8'))
 
 
-        cv2.imshow('cropped', image)
-        cv2.waitKey(0)
+
+
+        # Display the image.
+        image.show()
+
         return image
 
     def stepFindAreaTresholding(self):
